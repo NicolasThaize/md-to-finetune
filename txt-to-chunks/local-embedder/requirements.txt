@@ -1,0 +1,17 @@
+# Dépendances pour LlamaIndex avec embeddings locaux
+llama-index
+llama-index-embeddings-huggingface
+llama-index-llms-ollama
+python-dotenv
+
+# Dépendances pour les modèles Hugging Face
+torch>=2.0.0
+transformers>=4.30.0
+sentence-transformers>=2.2.0
+
+# Dépendances pour Ollama (LLM local)
+ollama>=0.1.0
+
+# Dépendances optionnelles pour GPU
+# torch-audio  # Décommentez si vous voulez le support audio
+# torch-vision  # Décommentez si vous voulez le support vision

@@ -1,0 +1,5 @@
+# Fichier requirements.txt simplifié
+llama-index
+openai>=1.0.0
+python-dotenv>=1.0.0
+dotenv

@@ -1,0 +1,5 @@
+# Dépendances pour LlamaIndex avec Mistral AI
+llama-index
+llama-index-embeddings-mistralai
+llama-index-llms-mistralai
+python-dotenv
