@@ -70,35 +70,54 @@ class LoRATrainer:
         
         # Load base model with consistent dtype and device mapping
         try:
+            print(f"Loading model with dtype={model_dtype}, device_map='auto'")
             model = AutoModelForCausalLM.from_pretrained(
                 self.config.base_model,
                 dtype=model_dtype,
                 device_map="auto",
                 trust_remote_code=True,
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
             )
+            print("Model loaded successfully with device_map='auto'")
         except Exception as e:
             print(f"Failed to load with device_map='auto': {e}")
             print("Trying with device_map=None...")
             # Fallback to loading on CPU first, then move to GPU if available
-            model = AutoModelForCausalLM.from_pretrained(
-                self.config.base_model,
-                dtype=model_dtype,
-                device_map=None,
-                trust_remote_code=True,
-                low_cpu_mem_usage=True
-            )
-            # Move to GPU if available
-            if torch.cuda.is_available():
-                model = model.cuda()
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    self.config.base_model,
+                    dtype=model_dtype,
+                    device_map=None,
+                    trust_remote_code=True,
+                    low_cpu_mem_usage=True,
+                )
+                print("Model loaded successfully with device_map=None")
+                # Move to GPU if available
+                if torch.cuda.is_available():
+                    print("Moving model to GPU...")
+                    model = model.cuda()
+                    print("Model moved to GPU successfully")
+            except Exception as e2:
+                print(f"Failed to load with device_map=None: {e2}")
+                raise e2
         
-        # Don't try to move offloaded models - they're already on the correct devices
-        # Only ensure dtype consistency for non-offloaded parameters
+        # Verify model was loaded successfully
+        if model is None:
+            raise RuntimeError("Failed to load model - model is None")
+        
+        print(f"Model loaded successfully. Model type: {type(model)}")
+        
+        # Force dtype conversion to ensure consistency
         if hasattr(model, 'hf_device_map') and model.hf_device_map:
-            # Model is using device mapping - don't move it
-            print("Model loaded with device mapping - skipping dtype conversion")
+            print("Model loaded with device mapping - ensuring dtype consistency")
+            # For offloaded models, we need to be more careful
+            for name, param in model.named_parameters():
+                if param.dtype != model_dtype:
+                    print(f"Converting {name} from {param.dtype} to {model_dtype}")
+                    param.data = param.data.to(dtype=model_dtype)
         else:
             # Model is fully loaded - can safely convert dtype
+            print("Model is fully loaded - converting dtype")
             model = model.to(dtype=model_dtype)
         
         # Configure LoRA
@@ -114,9 +133,13 @@ class LoRATrainer:
         # Apply LoRA
         self.model = get_peft_model(model, lora_config)
         
-        # Don't try to move LoRA model if it has device mapping
+        # Ensure LoRA model is also in correct dtype
         if hasattr(self.model, 'hf_device_map') and self.model.hf_device_map:
-            print("LoRA model using device mapping - skipping dtype conversion")
+            print("LoRA model using device mapping - ensuring dtype consistency")
+            for name, param in self.model.named_parameters():
+                if param.dtype != model_dtype:
+                    print(f"Converting LoRA {name} from {param.dtype} to {model_dtype}")
+                    param.data = param.data.to(dtype=model_dtype)
         else:
             self.model = self.model.to(dtype=model_dtype)
         
