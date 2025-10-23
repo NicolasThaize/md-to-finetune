@@ -61,15 +61,39 @@ class JSONLLoader:
         if not isinstance(data, dict):
             raise ValueError(f"Line {line_num}: Expected dict, got {type(data)}")
         
-        # Support both "question/answer" and "user/assistant" formats
+        # Support multiple formats: "question/answer", "user/assistant", and "messages"
         if "question" in data and "answer" in data:
             question = data["question"]
             answer = data["answer"]
         elif "user" in data and "assistant" in data:
             question = data["user"]
             answer = data["assistant"]
+        elif "messages" in data:
+            # Handle messages format with role/content
+            messages = data["messages"]
+            if not isinstance(messages, list) or len(messages) < 2:
+                raise ValueError(f"Line {line_num}: messages must be a list with at least 2 items")
+            
+            # Find user and assistant messages
+            user_msg = None
+            assistant_msg = None
+            
+            for msg in messages:
+                if not isinstance(msg, dict) or "role" not in msg or "content" not in msg:
+                    raise ValueError(f"Line {line_num}: Each message must have 'role' and 'content' fields")
+                
+                if msg["role"] == "user" and user_msg is None:
+                    user_msg = msg["content"]
+                elif msg["role"] == "assistant" and assistant_msg is None:
+                    assistant_msg = msg["content"]
+            
+            if user_msg is None or assistant_msg is None:
+                raise ValueError(f"Line {line_num}: messages must contain both 'user' and 'assistant' roles")
+            
+            question = user_msg
+            answer = assistant_msg
         else:
-            raise ValueError(f"Line {line_num}: Missing required fields. Expected 'question/answer' or 'user/assistant'")
+            raise ValueError(f"Line {line_num}: Missing required fields. Expected 'question/answer', 'user/assistant', or 'messages'")
         
         if not isinstance(question, str) or not isinstance(answer, str):
             raise ValueError(f"Line {line_num}: question and answer must be strings")
