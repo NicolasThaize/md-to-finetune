@@ -70,32 +70,42 @@ class LoRATrainer:
         
         # Load base model with consistent dtype and device mapping
         try:
+            print(f"Loading model with dtype={model_dtype}, device_map='auto'")
             model = AutoModelForCausalLM.from_pretrained(
                 self.config.base_model,
                 dtype=model_dtype,
                 device_map="auto",
                 trust_remote_code=True,
                 low_cpu_mem_usage=True,
-                # Force specific quantization to avoid MXFP4 -> BFloat16 conversion
-                quantization_config=None,  # Disable quantization
-                torch_dtype=model_dtype,  # Explicitly set torch_dtype
             )
+            print("Model loaded successfully with device_map='auto'")
         except Exception as e:
             print(f"Failed to load with device_map='auto': {e}")
             print("Trying with device_map=None...")
             # Fallback to loading on CPU first, then move to GPU if available
-            model = AutoModelForCausalLM.from_pretrained(
-                self.config.base_model,
-                dtype=model_dtype,
-                device_map=None,
-                trust_remote_code=True,
-                low_cpu_mem_usage=True,
-                quantization_config=None,  # Disable quantization
-                torch_dtype=model_dtype,  # Explicitly set torch_dtype
-            )
-            # Move to GPU if available
-            if torch.cuda.is_available():
-                model = model.cuda()
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    self.config.base_model,
+                    dtype=model_dtype,
+                    device_map=None,
+                    trust_remote_code=True,
+                    low_cpu_mem_usage=True,
+                )
+                print("Model loaded successfully with device_map=None")
+                # Move to GPU if available
+                if torch.cuda.is_available():
+                    print("Moving model to GPU...")
+                    model = model.cuda()
+                    print("Model moved to GPU successfully")
+            except Exception as e2:
+                print(f"Failed to load with device_map=None: {e2}")
+                raise e2
+        
+        # Verify model was loaded successfully
+        if model is None:
+            raise RuntimeError("Failed to load model - model is None")
+        
+        print(f"Model loaded successfully. Model type: {type(model)}")
         
         # Force dtype conversion to ensure consistency
         if hasattr(model, 'hf_device_map') and model.hf_device_map:
@@ -107,6 +117,7 @@ class LoRATrainer:
                     param.data = param.data.to(dtype=model_dtype)
         else:
             # Model is fully loaded - can safely convert dtype
+            print("Model is fully loaded - converting dtype")
             model = model.to(dtype=model_dtype)
         
         # Configure LoRA
