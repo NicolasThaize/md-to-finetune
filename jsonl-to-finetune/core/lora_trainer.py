@@ -65,12 +65,19 @@ class LoRATrainer:
         """Load and prepare model with LoRA."""
         print(f"Loading base model: {self.config.base_model}")
         
-        # Load base model
+        # Determine dtype based on fp16 setting
+        model_dtype = torch.float16 if self.config.fp16 else torch.float32
+        
+        # Load base model with consistent dtype
         model = AutoModelForCausalLM.from_pretrained(
             self.config.base_model,
-            torch_dtype=torch.float16 if self.config.fp16 else torch.float32,
-            device_map="auto"
+            torch_dtype=model_dtype,
+            device_map="auto",
+            trust_remote_code=True
         )
+        
+        # Ensure model is in the correct dtype
+        model = model.to(dtype=model_dtype)
         
         # Configure LoRA
         lora_config = LoraConfig(
@@ -84,6 +91,10 @@ class LoRATrainer:
         
         # Apply LoRA
         self.model = get_peft_model(model, lora_config)
+        
+        # Ensure LoRA model is also in correct dtype
+        self.model = self.model.to(dtype=model_dtype)
+        
         self.model.print_trainable_parameters()
     
     def prepare_dataset(self, examples: List[Dict[str, str]]) -> Dataset:
@@ -103,7 +114,10 @@ class LoRATrainer:
             return_tensors="pt"
         )
         
-        # Create dataset
+        # Ensure consistent dtype for tensors
+        model_dtype = torch.float16 if self.config.fp16 else torch.float32
+        
+        # Create dataset with proper dtype handling
         dataset = Dataset.from_dict({
             "input_ids": tokenized["input_ids"],
             "attention_mask": tokenized["attention_mask"],
@@ -135,12 +149,24 @@ class LoRATrainer:
             save_steps=self.config.save_steps,
             eval_steps=self.config.eval_steps,
             fp16=self.config.fp16,
+            bf16=False,  # Explicitly disable bf16 to avoid dtype conflicts
             remove_unused_columns=False,
             dataloader_pin_memory=False,
+            dataloader_num_workers=0,  # Avoid multiprocessing issues
         )
         
-        # Data collator
-        data_collator = DataCollatorForLanguageModeling(
+        # Custom data collator to ensure dtype consistency
+        class CustomDataCollator(DataCollatorForLanguageModeling):
+            def __call__(self, features):
+                batch = super().__call__(features)
+                # Ensure all tensors are in the correct dtype
+                model_dtype = torch.float16 if self.config.fp16 else torch.float32
+                for key in batch:
+                    if isinstance(batch[key], torch.Tensor):
+                        batch[key] = batch[key].to(dtype=torch.long if key in ['input_ids', 'labels', 'attention_mask'] else model_dtype)
+                return batch
+        
+        data_collator = CustomDataCollator(
             tokenizer=self.tokenizer_manager.tokenizer,
             mlm=False
         )
