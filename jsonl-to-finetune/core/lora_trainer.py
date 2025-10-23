@@ -75,7 +75,10 @@ class LoRATrainer:
                 dtype=model_dtype,
                 device_map="auto",
                 trust_remote_code=True,
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
+                # Force specific quantization to avoid MXFP4 -> BFloat16 conversion
+                quantization_config=None,  # Disable quantization
+                torch_dtype=model_dtype,  # Explicitly set torch_dtype
             )
         except Exception as e:
             print(f"Failed to load with device_map='auto': {e}")
@@ -86,17 +89,22 @@ class LoRATrainer:
                 dtype=model_dtype,
                 device_map=None,
                 trust_remote_code=True,
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
+                quantization_config=None,  # Disable quantization
+                torch_dtype=model_dtype,  # Explicitly set torch_dtype
             )
             # Move to GPU if available
             if torch.cuda.is_available():
                 model = model.cuda()
         
-        # Don't try to move offloaded models - they're already on the correct devices
-        # Only ensure dtype consistency for non-offloaded parameters
+        # Force dtype conversion to ensure consistency
         if hasattr(model, 'hf_device_map') and model.hf_device_map:
-            # Model is using device mapping - don't move it
-            print("Model loaded with device mapping - skipping dtype conversion")
+            print("Model loaded with device mapping - ensuring dtype consistency")
+            # For offloaded models, we need to be more careful
+            for name, param in model.named_parameters():
+                if param.dtype != model_dtype:
+                    print(f"Converting {name} from {param.dtype} to {model_dtype}")
+                    param.data = param.data.to(dtype=model_dtype)
         else:
             # Model is fully loaded - can safely convert dtype
             model = model.to(dtype=model_dtype)
@@ -114,9 +122,13 @@ class LoRATrainer:
         # Apply LoRA
         self.model = get_peft_model(model, lora_config)
         
-        # Don't try to move LoRA model if it has device mapping
+        # Ensure LoRA model is also in correct dtype
         if hasattr(self.model, 'hf_device_map') and self.model.hf_device_map:
-            print("LoRA model using device mapping - skipping dtype conversion")
+            print("LoRA model using device mapping - ensuring dtype consistency")
+            for name, param in self.model.named_parameters():
+                if param.dtype != model_dtype:
+                    print(f"Converting LoRA {name} from {param.dtype} to {model_dtype}")
+                    param.data = param.data.to(dtype=model_dtype)
         else:
             self.model = self.model.to(dtype=model_dtype)
         
