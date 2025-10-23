@@ -68,16 +68,38 @@ class LoRATrainer:
         # Determine dtype based on fp16 setting
         model_dtype = torch.float16 if self.config.fp16 else torch.float32
         
-        # Load base model with consistent dtype
-        model = AutoModelForCausalLM.from_pretrained(
-            self.config.base_model,
-            torch_dtype=model_dtype,
-            device_map="auto",
-            trust_remote_code=True
-        )
+        # Load base model with consistent dtype and device mapping
+        try:
+            model = AutoModelForCausalLM.from_pretrained(
+                self.config.base_model,
+                torch_dtype=model_dtype,
+                device_map="auto",
+                trust_remote_code=True,
+                low_cpu_mem_usage=True
+            )
+        except Exception as e:
+            print(f"Failed to load with device_map='auto': {e}")
+            print("Trying with device_map=None...")
+            # Fallback to loading on CPU first, then move to GPU if available
+            model = AutoModelForCausalLM.from_pretrained(
+                self.config.base_model,
+                torch_dtype=model_dtype,
+                device_map=None,
+                trust_remote_code=True,
+                low_cpu_mem_usage=True
+            )
+            # Move to GPU if available
+            if torch.cuda.is_available():
+                model = model.cuda()
         
-        # Ensure model is in the correct dtype
-        model = model.to(dtype=model_dtype)
+        # Don't try to move offloaded models - they're already on the correct devices
+        # Only ensure dtype consistency for non-offloaded parameters
+        if hasattr(model, 'hf_device_map') and model.hf_device_map:
+            # Model is using device mapping - don't move it
+            print("Model loaded with device mapping - skipping dtype conversion")
+        else:
+            # Model is fully loaded - can safely convert dtype
+            model = model.to(dtype=model_dtype)
         
         # Configure LoRA
         lora_config = LoraConfig(
@@ -92,8 +114,11 @@ class LoRATrainer:
         # Apply LoRA
         self.model = get_peft_model(model, lora_config)
         
-        # Ensure LoRA model is also in correct dtype
-        self.model = self.model.to(dtype=model_dtype)
+        # Don't try to move LoRA model if it has device mapping
+        if hasattr(self.model, 'hf_device_map') and self.model.hf_device_map:
+            print("LoRA model using device mapping - skipping dtype conversion")
+        else:
+            self.model = self.model.to(dtype=model_dtype)
         
         self.model.print_trainable_parameters()
     
@@ -153,6 +178,8 @@ class LoRATrainer:
             remove_unused_columns=False,
             dataloader_pin_memory=False,
             dataloader_num_workers=0,  # Avoid multiprocessing issues
+            ddp_find_unused_parameters=False,  # Avoid issues with offloaded models
+            save_safetensors=True,  # Use safetensors for better compatibility
         )
         
         # Custom data collator to ensure dtype consistency
