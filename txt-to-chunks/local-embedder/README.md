@@ -75,6 +75,9 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 # Pour CUDA 12.1
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Pour CUDA 13
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
 ```
 
 ## 🎯 **Utilisation**

@@ -36,6 +36,21 @@ cd jsonl-to-finetune
 pip install -r requirements.txt
 ```
 
+### **Installation GPU (optionnel mais recommandé)**
+
+Pour utiliser le GPU et accélérer les calculs :
+
+```bash
+# Pour CUDA 11.8
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Pour CUDA 12.1
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Pour CUDA 13
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
+```
+
 ## Utilisation
 
 ### Exemple basique
