@@ -184,10 +184,14 @@ class LoRATrainer:
         
         # Custom data collator to ensure dtype consistency
         class CustomDataCollator(DataCollatorForLanguageModeling):
+            def __init__(self, tokenizer, mlm=False, fp16=True):
+                super().__init__(tokenizer=tokenizer, mlm=mlm)
+                self.fp16 = fp16
+            
             def __call__(self, features):
                 batch = super().__call__(features)
                 # Ensure all tensors are in the correct dtype
-                model_dtype = torch.float16 if self.config.fp16 else torch.float32
+                model_dtype = torch.float16 if self.fp16 else torch.float32
                 for key in batch:
                     if isinstance(batch[key], torch.Tensor):
                         batch[key] = batch[key].to(dtype=torch.long if key in ['input_ids', 'labels', 'attention_mask'] else model_dtype)
@@ -195,7 +199,8 @@ class LoRATrainer:
         
         data_collator = CustomDataCollator(
             tokenizer=self.tokenizer_manager.tokenizer,
-            mlm=False
+            mlm=False,
+            fp16=self.config.fp16
         )
         
         # Create trainer
