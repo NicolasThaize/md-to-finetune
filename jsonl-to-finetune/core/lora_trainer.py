@@ -72,7 +72,7 @@ class LoRATrainer:
         try:
             model = AutoModelForCausalLM.from_pretrained(
                 self.config.base_model,
-                torch_dtype=model_dtype,
+                dtype=model_dtype,
                 device_map="auto",
                 trust_remote_code=True,
                 low_cpu_mem_usage=True
@@ -83,7 +83,7 @@ class LoRATrainer:
             # Fallback to loading on CPU first, then move to GPU if available
             model = AutoModelForCausalLM.from_pretrained(
                 self.config.base_model,
-                torch_dtype=model_dtype,
+                dtype=model_dtype,
                 device_map=None,
                 trust_remote_code=True,
                 low_cpu_mem_usage=True
