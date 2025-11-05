@@ -38,15 +38,6 @@ class QAPair:
     answer: str
     source_title: str
     source_level: int
-    
-    def to_jsonl_format(self) -> Dict[str, Any]:
-        """Convertit en format JSONL standard."""
-        return {
-            "messages": [
-                {"role": "user", "content": self.question},
-                {"role": "assistant", "content": self.answer}
-            ]
-        }
 
 
 class MarkdownParser(ABC):
@@ -291,26 +282,8 @@ class QAPairGenerator:
         return qa_pairs
 
 
-class DatasetExporter(ABC):
-    """Interface pour l'export de datasets."""
-    
-    @abstractmethod
-    def export(self, qa_pairs: List[QAPair], output_path: Path) -> None:
-        """Exporte les paires Q/R dans un fichier."""
-        pass
-
-
-class JSONLExporter(DatasetExporter):
-    """Exporteur au format JSONL."""
-    
-    def export(self, qa_pairs: List[QAPair], output_path: Path) -> None:
-        """Exporte en format JSONL standard."""
-        with open(output_path, 'w', encoding='utf-8') as f:
-            for qa_pair in qa_pairs:
-                json.dump(qa_pair.to_jsonl_format(), f, ensure_ascii=False)
-                f.write('\n')
-        
-        logger.info(f"✅ {len(qa_pairs)} paires Q/R exportées vers {output_path}")
+# DatasetExporter is now in exporters module
+from exporters import DatasetExporter
 
 
 class DatasetGenerator:
@@ -357,8 +330,19 @@ class DatasetGeneratorFactory:
     """Factory pour créer des générateurs de dataset."""
     
     @staticmethod
-    def create_default_generator(llm_model: str = "mistral:7b-instruct") -> DatasetGenerator:
-        """Crée un générateur avec la configuration par défaut."""
+    def create_default_generator(
+        llm_model: str = "mistral:7b-instruct",
+        output_format: str = "messages",
+        mistral_model_name: str = "mistralai/Mistral-7B-Instruct-v0.2"
+    ) -> DatasetGenerator:
+        """
+        Crée un générateur avec la configuration spécifiée.
+        
+        Args:
+            llm_model: Modèle LLM pour la génération Q/R (Ollama)
+            output_format: Format de sortie (messages, question_answer, user_assistant, mistral_template)
+            mistral_model_name: Nom du modèle Mistral pour le tokenizer (si format=mistral_template)
+        """
         # Composants
         markdown_parser = HierarchicalMarkdownParser()
         chunk_processor = MarkdownChunkProcessor()
@@ -368,8 +352,25 @@ class DatasetGeneratorFactory:
         answer_generator = LLMAnswerGenerator(llm_model)
         qa_generator = QAPairGenerator(question_generator, answer_generator)
         
-        # Export
-        exporter = JSONLExporter()
+        # Export - sélectionner l'exporteur selon le format
+        from exporters import (
+            MessagesFormatExporter,
+            QuestionAnswerFormatExporter,
+            UserAssistantFormatExporter,
+            MistralChatTemplateExporter
+        )
+        
+        if output_format == "messages":
+            exporter = MessagesFormatExporter()
+        elif output_format == "question_answer":
+            exporter = QuestionAnswerFormatExporter()
+        elif output_format == "user_assistant":
+            exporter = UserAssistantFormatExporter()
+        elif output_format == "mistral_template":
+            exporter = MistralChatTemplateExporter(model_name=mistral_model_name)
+        else:
+            raise ValueError(f"Format de sortie inconnu: {output_format}. "
+                           f"Formats disponibles: messages, question_answer, user_assistant, mistral_template")
         
         return DatasetGenerator(
             markdown_parser=markdown_parser,
@@ -381,13 +382,52 @@ class DatasetGeneratorFactory:
 
 def main():
     """Fonction principale."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Générateur de dataset Q/R")
+    parser.add_argument(
+        "--format",
+        choices=["messages", "question_answer", "user_assistant", "mistral_template"],
+        default="messages",
+        help="Format de sortie (défaut: messages)"
+    )
+    parser.add_argument(
+        "--mistral-model",
+        default="mistralai/Mistral-7B-Instruct-v0.2",
+        help="Modèle Mistral pour le tokenizer (si format=mistral_template)"
+    )
+    parser.add_argument(
+        "--input",
+        type=Path,
+        default=Path("sources/droitadminSmall.md"),
+        help="Fichier Markdown d'entrée"
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Fichier de sortie (extension ajustée automatiquement selon le format)"
+    )
+    
+    args = parser.parse_args()
+    
     # Configuration
-    markdown_file = Path("sources/droitadminSmall.md")
-    output_file = Path("training_data.jsonl")
+    markdown_file = args.input
+    if args.output:
+        output_file = args.output
+    else:
+        # Déterminer l'extension selon le format
+        if args.format == "mistral_template":
+            output_file = Path("training_data.csv")
+        else:
+            output_file = Path("training_data.jsonl")
     
     try:
         # Créer le générateur
-        generator = DatasetGeneratorFactory.create_default_generator()
+        generator = DatasetGeneratorFactory.create_default_generator(
+            output_format=args.format,
+            mistral_model_name=args.mistral_model
+        )
         
         # Générer le dataset
         qa_pairs = generator.generate_dataset(markdown_file, output_file)
@@ -395,6 +435,7 @@ def main():
         print(f"\n✅ Dataset généré avec succès!")
         print(f"📊 {len(qa_pairs)} paires Q/R créées")
         print(f"💾 Fichier: {output_file}")
+        print(f"📝 Format: {args.format}")
         
     except Exception as e:
         logger.error(f"Erreur: {e}")
