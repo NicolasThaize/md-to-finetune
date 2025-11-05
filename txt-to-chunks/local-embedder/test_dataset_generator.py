@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Tests pour le générateur de dataset Q/R.
+Tests unitaires/intégration du générateur de dataset.
+Objectif: valider les briques (parser markdown hiérarchique, chunking), les générateurs
+Q/R (mockés), l'assemblage (QAPairGenerator, Factory) et les exporteurs:
+- messages JSONL, question/answer JSONL, user/assistant JSONL
+- format Mistral CSV via tokenizer.apply_chat_template (mocké)
 """
 
 import os
@@ -30,8 +34,14 @@ def test_imports():
             ChunkProcessor, MarkdownChunkProcessor,
             QuestionGenerator, LLMQuestionGenerator,
             AnswerGenerator, LLMAnswerGenerator,
-            QAPairGenerator, DatasetExporter, JSONLExporter,
-            DatasetGenerator, DatasetGeneratorFactory
+            QAPairGenerator, DatasetGenerator, DatasetGeneratorFactory
+        )
+        from exporters import (
+            DatasetExporter,
+            MessagesFormatExporter,
+            QuestionAnswerFormatExporter,
+            UserAssistantFormatExporter,
+            MistralChatTemplateExporter,
         )
         print("✅ Tous les imports réussis")
         return True
@@ -59,16 +69,6 @@ def test_qa_pair_dataclass():
         assert qa_pair.answer == "L'administration est l'ensemble des personnes publiques françaises."
         assert qa_pair.source_title == "Introduction"
         assert qa_pair.source_level == 1
-        
-        # Test du format JSONL
-        jsonl_format = qa_pair.to_jsonl_format()
-        expected = {
-            "messages": [
-                {"role": "user", "content": "Qu'est-ce que l'administration?"},
-                {"role": "assistant", "content": "L'administration est l'ensemble des personnes publiques françaises."}
-            ]
-        }
-        assert jsonl_format == expected
         
         print("✅ QAPair fonctionne correctement")
         return True
@@ -233,15 +233,16 @@ def test_qa_pair_generator():
         print(f"❌ Erreur avec le générateur de paires Q/R: {e}")
         return False
 
-def test_jsonl_exporter():
-    """Test de l'exporteur JSONL."""
-    print("\n📤 Test de l'exporteur JSONL...")
+def test_messages_exporter():
+    """Test de l'exporteur Messages (JSONL)."""
+    print("\n📤 Test de l'exporteur Messages (JSONL)...")
     
     try:
-        from dataset_generator import JSONLExporter, QAPair
+        from dataset_generator import QAPair
+        from exporters import MessagesFormatExporter
         import tempfile
         
-        exporter = JSONLExporter()
+        exporter = MessagesFormatExporter()
         
         # Créer des paires Q/R de test
         qa_pairs = [
@@ -282,10 +283,55 @@ def test_jsonl_exporter():
         # Nettoyer
         temp_path.unlink()
         
-        print("✅ Exporteur JSONL fonctionne correctement")
+        print("✅ Exporteur Messages fonctionne correctement")
         return True
     except Exception as e:
-        print(f"❌ Erreur avec l'exporteur JSONL: {e}")
+        print(f"❌ Erreur avec l'exporteur Messages: {e}")
+        return False
+
+def test_mistral_exporter():
+    """Test de l'exporteur Mistral (CSV) avec mock du tokenizer."""
+    print("\n🟦 Test de l'exporteur Mistral (CSV)...")
+    
+    try:
+        from dataset_generator import QAPair
+        from exporters.mistral_template import MistralChatTemplateExporter
+        import tempfile
+        
+        with patch('exporters.mistral_template.AutoTokenizer') as mock_tok:
+            # Mock tokenizer behavior
+            mock_instance = Mock()
+            mock_instance.apply_chat_template.return_value = "<s>[INST] Q [/INST] A</s>"
+            mock_tok.from_pretrained.return_value = mock_instance
+            
+            exporter = MistralChatTemplateExporter(model_name="mock-model")
+            
+            qa_pairs = [
+                QAPair(question="Q1?", answer="A1", source_title="S1", source_level=1),
+                QAPair(question="Q2?", answer="A2", source_title="S2", source_level=2),
+            ]
+            
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv') as f:
+                temp_path = Path(f.name)
+            
+            exporter.export(qa_pairs, temp_path)
+            
+            # Vérifier le contenu CSV
+            import csv
+            with open(temp_path, 'r', encoding='utf-8') as f:
+                reader = list(csv.reader(f))
+            
+            # Header + 2 rows
+            assert len(reader) == 3, f"Attendu 3 lignes (1 header + 2), obtenu {len(reader)}"
+            assert reader[0] == ['formatted_text']
+            assert reader[1][0].startswith('<s>[INST]')
+            
+            temp_path.unlink()
+        
+        print("✅ Exporteur Mistral fonctionne correctement")
+        return True
+    except Exception as e:
+        print(f"❌ Erreur avec l'exporteur Mistral: {e}")
         return False
 
 def test_factory():
@@ -340,7 +386,8 @@ def main():
         ("Processeur de chunks", test_chunk_processor),
         ("Composants LLM", test_llm_components),
         ("Générateur Q/R", test_qa_pair_generator),
-        ("Exporteur JSONL", test_jsonl_exporter),
+        ("Exporteur Messages", test_messages_exporter),
+        ("Exporteur Mistral", test_mistral_exporter),
         ("Factory", test_factory),
         ("Fichier source", test_file_existence)
     ]

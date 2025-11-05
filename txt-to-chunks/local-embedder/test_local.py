@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Script de test pour vérifier le fonctionnement du processeur avec embeddings locaux.
+Tests d'intégration légère du processeur local.
+Objectif: valider l'environnement et la chaîne locale (import, fichier source,
+parsing Markdown, initialisation des embeddings HF, disponibilité GPU, téléchargement
+du modèle). Ces tests n'impliquent ni exporteurs ni Ollama.
 """
 
 import os
@@ -35,7 +38,7 @@ def test_file_existence():
     """Test de l'existence du fichier source."""
     print("\n📁 Test de l'existence du fichier source...")
     
-    markdown_file = Path("../sources/droitadminSmall.md")
+    markdown_file = Path("./sources/droitadminSmall.md")
     if markdown_file.exists():
         print(f"✅ Fichier trouvé: {markdown_file}")
         print(f"   Taille: {markdown_file.stat().st_size} bytes")
@@ -69,7 +72,7 @@ def test_markdown_parsing():
         from main import MarkdownDocumentProcessorLocal
         
         processor = MarkdownDocumentProcessorLocal(
-            markdown_file_path="../sources/droitadminSmall.md",
+            markdown_file_path="./sources/droitadminSmall.md",
             storage_dir="./test_storage_local"
         )
         

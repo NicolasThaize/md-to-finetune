@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Script de test pour la génération de paires question/réponse.
+Tests d'intégration orientés LLM avec Ollama pour la génération Q/R.
+Objectif: vérifier client/serveur Ollama, une génération simple, puis la
+génération de questions/réponses à partir d'un vrai chunk Markdown via
+MarkdownDocumentProcessorLocal. Dépend de l'environnement local (Ollama + modèle
+mistral).
 """
 
 import os
@@ -41,12 +45,12 @@ def test_ollama_server():
         # Tester la connexion
         models = ollama.list()
         print("✅ Serveur Ollama accessible")
-        print(f"   Modèles disponibles: {len(models['models'])}")
+        print(f"   Modèles disponibles: {models['models']}")
         
         # Vérifier si Mistral est installé
-        mistral_models = [m for m in models['models'] if 'mistral' in m['name'].lower()]
+        mistral_models = [m for m in models['models'] if 'mistral' in m['model'].lower()]
         if mistral_models:
-            print(f"✅ Modèle Mistral trouvé: {mistral_models[0]['name']}")
+            print(f"✅ Modèle Mistral trouvé: {mistral_models[0]['model']}")
             return True
         else:
             print("⚠️  Modèle Mistral non trouvé")
@@ -94,7 +98,7 @@ def test_qa_generation():
         from main import MarkdownDocumentProcessorLocal
         
         processor = MarkdownDocumentProcessorLocal(
-            markdown_file_path="../sources/droitadminSmall.md",
+            markdown_file_path="./sources/droitadminSmall.md",
             storage_dir="./test_storage_qa",
             llm_model="mistral:7b-instruct"
         )
