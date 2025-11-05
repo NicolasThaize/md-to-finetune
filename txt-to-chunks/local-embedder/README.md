@@ -22,19 +22,23 @@ Générateur optimisé pour créer des datasets d'entraînement Q/R à partir de
 ## 📁 Structure du Code
 
 ```
-main.py
-├── QAPair (dataclass)              # Représentation d'une paire Q/R
-├── MarkdownParser (interface)      # Parsing de documents
-├── HierarchicalMarkdownParser      # Parser préservant la hiérarchie
-├── ChunkProcessor (interface)      # Traitement des chunks
-├── MarkdownChunkProcessor          # Processeur spécialisé Markdown
-├── QuestionGenerator (interface)   # Génération de questions
-├── LLMQuestionGenerator            # Générateur utilisant LLM
-├── AnswerGenerator (interface)     # Génération de réponses
-├── LLMAnswerGenerator              # Générateur utilisant LLM
-├── QAPairGenerator                 # Orchestrateur Q/R
-├── DatasetGenerator                # Générateur principal
-└── DatasetGeneratorFactory         # Factory de création
+main.py                             # Pointe vers la CLI (shim)
+
+cli/
+└── main.py                         # argparse → factory + pipeline
+
+core/
+├── domain.py                       # QAPair (dataclass)
+├── parsing.py                      # MarkdownParser, HierarchicalMarkdownParser
+├── chunking.py                     # ChunkProcessor, MarkdownChunkProcessor
+└── qa.py                           # QuestionGenerator, AnswerGenerator
+
+llm/
+└── ollama_generators.py            # LLMQuestionGenerator, LLMAnswerGenerator
+
+pipeline/
+├── generator.py                    # QAPairGenerator, DatasetGenerator (facade)
+└── factory.py                      # DatasetGeneratorFactory (assemblage)
 
 exporters/
 ├── base.py                         # Interface DatasetExporter
@@ -62,21 +66,22 @@ pip install -r requirements.txt
 
 ```bash
 # JSONL (messages)
-python main.py --format messages --output training_data.jsonl
+python main.py --format messages --input sources/droitadminSmall.md --output training_data.jsonl
 
 # CSV (Mistral chat template)
-python main.py --format mistral_template --output training_data.csv --mistral-model mistralai/Mistral-7B-Instruct-v0.2
+python main.py --format mistral_template --input sources/droitadminSmall.md --output training_data.csv --mistral-model mistralai/Mistral-7B-Instruct-v0.2
 ```
 
 ### Utilisation Avancée
 
 ```python
 from pathlib import Path
-from dataset_generator import DatasetGeneratorFactory
+from pipeline.factory import DatasetGeneratorFactory
 
 # Générateur JSONL (messages)
-generator = DatasetGeneratorFactory.create_default_generator(
-    output_format="messages"
+generator = DatasetGeneratorFactory.create(
+    llm_model="mistral:7b-instruct",
+    output_format="messages",
 )
 qa_pairs = generator.generate_dataset(
     markdown_file=Path("sources/droitadminSmall.md"),
@@ -84,9 +89,10 @@ qa_pairs = generator.generate_dataset(
 )
 
 # Générateur CSV (Mistral chat template)
-generator_mistral = DatasetGeneratorFactory.create_default_generator(
+generator_mistral = DatasetGeneratorFactory.create(
+    llm_model="mistral:7b-instruct",
     output_format="mistral_template",
-    mistral_model_name="mistralai/Mistral-7B-Instruct-v0.2"
+    mistral_model_name="mistralai/Mistral-7B-Instruct-v0.2",
 )
 qa_pairs = generator_mistral.generate_dataset(
     markdown_file=Path("sources/droitadminSmall.md"),
@@ -192,9 +198,9 @@ generator = DatasetGeneratorFactory.create_default_generator("llama2:7b")
 ### Génération Simple
 
 ```python
-from dataset_generator import DatasetGeneratorFactory
+from pipeline.factory import DatasetGeneratorFactory
 
-generator = DatasetGeneratorFactory.create_default_generator()
+generator = DatasetGeneratorFactory.create()
 qa_pairs = generator.generate_dataset(
     Path("mon_document.md"),
     Path("mon_dataset.jsonl")
@@ -204,15 +210,11 @@ qa_pairs = generator.generate_dataset(
 ### Génération Personnalisée
 
 ```python
-from dataset_generator import (
-    HierarchicalMarkdownParser,
-    MarkdownChunkProcessor,
-    LLMQuestionGenerator,
-    LLMAnswerGenerator,
-    QAPairGenerator,
-    JSONLExporter,
-    DatasetGenerator
-)
+from core.parsing import HierarchicalMarkdownParser
+from core.chunking import MarkdownChunkProcessor
+from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
+from pipeline.generator import QAPairGenerator, DatasetGenerator
+from exporters.messages import MessagesFormatExporter
 
 # Composants personnalisés
 parser = HierarchicalMarkdownParser()
@@ -220,7 +222,7 @@ processor = MarkdownChunkProcessor()
 question_gen = LLMQuestionGenerator("custom-model")
 answer_gen = LLMAnswerGenerator("custom-model")
 qa_gen = QAPairGenerator(question_gen, answer_gen)
-exporter = JSONLExporter()
+exporter = MessagesFormatExporter()
 
 # Générateur personnalisé
 generator = DatasetGenerator(parser, processor, qa_gen, exporter)

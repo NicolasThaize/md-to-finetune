@@ -26,8 +26,8 @@ def test_imports():
     print("🔍 Test des imports...")
     
     try:
-        from main import MarkdownDocumentProcessorLocal
-        print("✅ Import de MarkdownDocumentProcessorLocal réussi")
+        from core.parsing import HierarchicalMarkdownParser
+        print("✅ Import du parser hiérarchique réussi")
     except ImportError as e:
         print(f"❌ Erreur d'import: {e}")
         return False
@@ -52,13 +52,11 @@ def test_processor_initialization():
     print("\n🏗️ Test de l'initialisation du processeur...")
     
     try:
-        from main import MarkdownDocumentProcessorLocal
-        
-        processor = MarkdownDocumentProcessorLocal(
-            markdown_file_path="../sources/droitadminSmall.md",
-            storage_dir="./test_storage_local"
-        )
-        print("✅ Processeur local initialisé avec succès")
+        from core.parsing import HierarchicalMarkdownParser
+        parser = HierarchicalMarkdownParser()
+        # Juste vérifier que l'instance se crée correctement
+        assert parser is not None
+        print("✅ Parser initialisé avec succès")
         return True
     except Exception as e:
         print(f"❌ Erreur d'initialisation: {e}")
@@ -69,14 +67,14 @@ def test_markdown_parsing():
     print("\n📄 Test du parsing Markdown...")
     
     try:
-        from main import MarkdownDocumentProcessorLocal
-        
-        processor = MarkdownDocumentProcessorLocal(
-            markdown_file_path="./sources/droitadminSmall.md",
-            storage_dir="./test_storage_local"
-        )
-        
-        documents = processor.load_and_parse_markdown()
+        from core.parsing import HierarchicalMarkdownParser
+        md_path = Path("./sources/droitadminSmall.md")
+        if not md_path.exists():
+            print(f"❌ Fichier non trouvé: {md_path}")
+            return False
+        content = md_path.read_text(encoding='utf-8')
+        parser = HierarchicalMarkdownParser()
+        documents = parser.parse(content)
         print(f"✅ Parsing réussi: {len(documents)} sections trouvées")
         
         # Afficher quelques exemples

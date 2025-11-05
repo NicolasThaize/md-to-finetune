@@ -91,48 +91,48 @@ def test_llm_generation():
         return False
 
 def test_qa_generation():
-    """Test de la génération de paires Q/R."""
+    """Test de la génération de paires Q/R (parsing → chunk → LLM)."""
     print("\n❓ Test de la génération de paires Q/R...")
     
     try:
-        from main import MarkdownDocumentProcessorLocal
+        from core.parsing import HierarchicalMarkdownParser
+        from core.chunking import MarkdownChunkProcessor
+        from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
+        from pathlib import Path
         
-        processor = MarkdownDocumentProcessorLocal(
-            markdown_file_path="./sources/droitadminSmall.md",
-            storage_dir="./test_storage_qa",
-            llm_model="mistral:7b-instruct"
-        )
+        md_path = Path("./sources/droitadminSmall.md")
+        if not md_path.exists():
+            print(f"❌ Fichier non trouvé: {md_path}")
+            return False
         
-        # Charger un petit échantillon
-        documents = processor.load_and_parse_markdown()
+        content = md_path.read_text(encoding='utf-8')
+        parser = HierarchicalMarkdownParser()
+        documents = parser.parse(content)
         if not documents:
             print("❌ Aucun document trouvé")
             return False
         
-        # Prendre seulement le premier document pour le test
-        test_doc = documents[0]
-        print(f"✅ Document de test: {test_doc.metadata.get('title', 'Sans titre')}")
+        chunker = MarkdownChunkProcessor()
+        chunks = chunker.process(documents)
+        if not chunks:
+            print("❌ Aucun chunk généré")
+            return False
+        test_chunk = chunks[0]
         
-        # Test de génération de questions
-        questions = processor._generate_questions_for_chunk(test_doc)
-        if questions:
-            print(f"✅ Questions générées: {len(questions)}")
-            for i, q in enumerate(questions, 1):
-                print(f"   {i}. {q}")
-        else:
+        q_gen = LLMQuestionGenerator("mistral:7b-instruct")
+        a_gen = LLMAnswerGenerator("mistral:7b-instruct")
+        
+        questions = q_gen.generate_questions(test_chunk)
+        if not questions:
             print("❌ Aucune question générée")
             return False
         
-        # Test de génération de réponse
-        if questions:
-            answer = processor._generate_answer_for_question(questions[0], test_doc)
-            if answer:
-                print(f"✅ Réponse générée: {answer[:100]}...")
-                return True
-            else:
-                print("❌ Aucune réponse générée")
-                return False
+        answer = a_gen.generate_answer(questions[0], test_chunk)
+        if not answer:
+            print("❌ Aucune réponse générée")
+            return False
         
+        print(f"✅ Q/R générée: {questions[0]} → {answer[:100]}...")
         return True
         
     except Exception as e:

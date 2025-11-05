@@ -29,15 +29,15 @@ def test_imports():
     print("🔍 Test des imports...")
     
     try:
-        from dataset_generator import (
-            QAPair, MarkdownParser, HierarchicalMarkdownParser,
-            ChunkProcessor, MarkdownChunkProcessor,
-            QuestionGenerator, LLMQuestionGenerator,
-            AnswerGenerator, LLMAnswerGenerator,
-            QAPairGenerator, DatasetGenerator, DatasetGeneratorFactory
-        )
+        from core.domain import QAPair
+        from core.parsing import MarkdownParser, HierarchicalMarkdownParser
+        from core.chunking import ChunkProcessor, MarkdownChunkProcessor
+        from core.qa import QuestionGenerator, AnswerGenerator
+        from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
+        from pipeline.generator import QAPairGenerator, DatasetGenerator
+        from pipeline.factory import DatasetGeneratorFactory
+        from exporters.base import DatasetExporter
         from exporters import (
-            DatasetExporter,
             MessagesFormatExporter,
             QuestionAnswerFormatExporter,
             UserAssistantFormatExporter,
@@ -54,7 +54,7 @@ def test_qa_pair_dataclass():
     print("\n📝 Test de la classe QAPair...")
     
     try:
-        from dataset_generator import QAPair
+        from core.domain import QAPair
         
         # Créer une paire Q/R
         qa_pair = QAPair(
@@ -81,7 +81,7 @@ def test_markdown_parser():
     print("\n📄 Test du parser Markdown...")
     
     try:
-        from dataset_generator import HierarchicalMarkdownParser
+        from core.parsing import HierarchicalMarkdownParser
         
         parser = HierarchicalMarkdownParser()
         
@@ -121,7 +121,7 @@ def test_chunk_processor():
     print("\n📝 Test du processeur de chunks...")
     
     try:
-        from dataset_generator import MarkdownChunkProcessor
+        from core.chunking import MarkdownChunkProcessor
         from llama_index.core import Document
         
         processor = MarkdownChunkProcessor()
@@ -160,11 +160,11 @@ def test_llm_components():
     print("\n🤖 Test des composants LLM...")
     
     try:
-        from dataset_generator import LLMQuestionGenerator, LLMAnswerGenerator
+        from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
         from llama_index.core import Document
         
         # Test avec mock pour éviter les appels réels
-        with patch('dataset_generator.Ollama') as mock_ollama:
+        with patch('llm.ollama_generators.Ollama') as mock_ollama:
             # Configurer le mock
             mock_llm = Mock()
             mock_llm.complete.return_value = Mock()
@@ -196,7 +196,8 @@ def test_qa_pair_generator():
     print("\n❓ Test du générateur de paires Q/R...")
     
     try:
-        from dataset_generator import QAPairGenerator, QuestionGenerator, AnswerGenerator
+        from pipeline.generator import QAPairGenerator
+        from core.qa import QuestionGenerator, AnswerGenerator
         from llama_index.core import Document
         
         # Mock des générateurs
@@ -238,7 +239,7 @@ def test_messages_exporter():
     print("\n📤 Test de l'exporteur Messages (JSONL)...")
     
     try:
-        from dataset_generator import QAPair
+        from core.domain import QAPair
         from exporters import MessagesFormatExporter
         import tempfile
         
@@ -294,7 +295,7 @@ def test_mistral_exporter():
     print("\n🟦 Test de l'exporteur Mistral (CSV)...")
     
     try:
-        from dataset_generator import QAPair
+        from core.domain import QAPair
         from exporters.mistral_template import MistralChatTemplateExporter
         import tempfile
         
@@ -339,10 +340,10 @@ def test_factory():
     print("\n🏭 Test de la factory...")
     
     try:
-        from dataset_generator import DatasetGeneratorFactory
+        from pipeline.factory import DatasetGeneratorFactory
         
         # Test de création avec mock
-        with patch('dataset_generator.Ollama') as mock_ollama:
+        with patch('llm.ollama_generators.Ollama') as mock_ollama:
             mock_llm = Mock()
             mock_ollama.return_value = mock_llm
             
@@ -421,7 +422,7 @@ def main():
     if passed == total:
         print("🎉 Tous les tests sont passés! Le générateur de dataset est prêt.")
         print("\n💡 Pour générer un dataset:")
-        print("   python dataset_generator.py")
+        print("   python main.py --format messages --input sources/droitadminSmall.md --output training_data.jsonl")
     else:
         print("⚠️  Certains tests ont échoué. Vérifiez les erreurs ci-dessus.")
     
