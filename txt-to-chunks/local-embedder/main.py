@@ -652,15 +652,50 @@ def main():
                 print("⚠️  Cette opération peut prendre du temps (5-15 minutes)")
                 print("📝 Génération de paires question/réponse pour chaque passage...")
                 
-                confirm = input("\nContinuer? (y/N): ").strip().lower()
+                # Format selection
+                print("\nFormats disponibles:")
+                print("1. Messages (ChatML/Harmony) - JSONL")
+                print("2. Question/Answer - JSONL")
+                print("3. User/Assistant - JSONL")
+                print("4. Mistral Chat Template - CSV")
+                
+                format_choice = input("\nChoisissez un format (1-4, défaut: 1): ").strip()
+                format_map = {
+                    "1": "messages",
+                    "2": "question_answer",
+                    "3": "user_assistant",
+                    "4": "mistral_template"
+                }
+                selected_format = format_map.get(format_choice, "messages")
+                
+                # Determine output file extension
+                if selected_format == "mistral_template":
+                    output_file = "training_data.csv"
+                else:
+                    output_file = "training_data.jsonl"
+                
+                confirm = input(f"\nFormat sélectionné: {selected_format}\nContinuer? (y/N): ").strip().lower()
                 if confirm in ['y', 'yes', 'oui']:
                     try:
-                        qa_pairs = processor.generate_training_data("training_data.jsonl")
+                        # Use DatasetGenerator from dataset_generator module
+                        from dataset_generator import DatasetGeneratorFactory
+                        from pathlib import Path
+                        
+                        generator = DatasetGeneratorFactory.create_default_generator(
+                            output_format=selected_format
+                        )
+                        
+                        markdown_file = Path(processor.markdown_file_path)
+                        output_path = processor.storage_dir / output_file
+                        
+                        qa_pairs = generator.generate_dataset(markdown_file, output_path)
                         print(f"\n✅ Dataset généré avec succès!")
                         print(f"📊 {len(qa_pairs)} paires Q/R créées")
-                        print(f"💾 Fichier: {processor.storage_dir / 'training_data.jsonl'}")
+                        print(f"💾 Fichier: {output_path}")
+                        print(f"📝 Format: {selected_format}")
                     except Exception as e:
                         print(f"❌ Erreur lors de la génération: {e}")
+                        logger.exception(e)
                 else:
                     print("❌ Génération annulée")
             
@@ -678,11 +713,24 @@ def main():
                 print(f"💾 Répertoire de stockage: {processor.storage_dir}")
                 
                 # Vérifier si des données d'entraînement existent
-                training_file = processor.storage_dir / "training_data.jsonl"
-                if training_file.exists():
-                    with open(training_file, 'r', encoding='utf-8') as f:
-                        lines = f.readlines()
-                    print(f"🤖 Paires Q/R générées: {len(lines)}")
+                training_files = [
+                    processor.storage_dir / "training_data.jsonl",
+                    processor.storage_dir / "training_data.csv"
+                ]
+                found_files = [f for f in training_files if f.exists()]
+                
+                if found_files:
+                    for training_file in found_files:
+                        if training_file.suffix == '.csv':
+                            import csv
+                            with open(training_file, 'r', encoding='utf-8') as f:
+                                reader = csv.reader(f)
+                                rows = list(reader)
+                                count = len(rows) - 1  # Exclude header
+                        else:
+                            with open(training_file, 'r', encoding='utf-8') as f:
+                                count = len(f.readlines())
+                        print(f"🤖 {training_file.name}: {count} paires Q/R")
                 else:
                     print("🤖 Aucune donnée d'entraînement générée")
             
