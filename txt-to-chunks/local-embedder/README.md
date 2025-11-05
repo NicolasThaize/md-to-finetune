@@ -1,268 +1,296 @@
-# Local Embedder - Recherche Sémantique et Génération Q/R Locale
+# 🎯 Générateur de Dataset Q/R
 
-Ce projet utilise des **embeddings locaux** pour la recherche sémantique dans des documents Markdown, et génère automatiquement des **paires question/réponse** pour l'entraînement de modèles, sans dépendre d'APIs externes coûteuses.
+Générateur optimisé pour créer des datasets d'entraînement Q/R à partir de documents Markdown, sans fonctionnalités de recherche sémantique.
 
-## 🚀 **Avantages de la solution locale**
+## 🏗️ Architecture
 
-- ✅ **Gratuit** : Pas de coûts d'API
-- ✅ **Sans limites** : Pas de rate limits
-- ✅ **Rapide** : Pas de latence réseau
-- ✅ **Privé** : Données restent locales
-- ✅ **Contrôle total** : Personnalisation possible
-- ✅ **Génération Q/R** : Création automatique de datasets d'entraînement
+### Design Patterns Implémentés
 
-## 🤖 **Modèles utilisés**
+#### **1. Strategy Pattern**
+- **`QuestionGenerator`** et **`AnswerGenerator`** : Interfaces pour différents algorithmes de génération
+- **`LLMQuestionGenerator`** et **`LLMAnswerGenerator`** : Implémentations concrètes utilisant Ollama
 
-### **Embeddings**
-**`sentence-transformers/distiluse-base-multilingual-cased`**
-- 🌍 **Multilingue** : Optimisé pour le français
-- 💾 **Taille** : ~471MB
-- 🧠 **Dimension** : 512
-- ⚡ **Performance** : Excellente qualité
+#### **2. Factory Pattern**
+- **`DatasetGeneratorFactory`** : Création centralisée des générateurs avec configuration par défaut
 
-### **LLM pour génération Q/R**
-**`mistral:7b-instruct`**
-- 🧠 **Modèle** : Mistral 7B Instruct
-- 💾 **Taille** : ~4.1GB
-- 🌍 **Multilingue** : Excellent en français
-- ⚡ **Performance** : Très bonne qualité
+#### **3. Facade Pattern**
+- **`DatasetGenerator`** : Interface simplifiée pour l'ensemble du processus
 
-## 📋 **Prérequis**
+#### **4. Abstract Factory Pattern**
+- **`MarkdownParser`**, **`ChunkProcessor`**, **`DatasetExporter`** : Interfaces pour différents types de traitement
 
-1. **Python 3.8+**
-2. **RAM** : 8GB minimum (16GB recommandé pour le LLM)
-3. **GPU** : Optionnel mais recommandé pour la vitesse
-4. **Espace disque** : 6GB pour les modèles et l'index
-5. **Ollama** : Pour le LLM local (Mistral 7B)
+## 📁 Structure du Code
 
-## 🛠️ **Installation**
+```
+main.py
+├── QAPair (dataclass)              # Représentation d'une paire Q/R
+├── MarkdownParser (interface)      # Parsing de documents
+├── HierarchicalMarkdownParser      # Parser préservant la hiérarchie
+├── ChunkProcessor (interface)      # Traitement des chunks
+├── MarkdownChunkProcessor          # Processeur spécialisé Markdown
+├── QuestionGenerator (interface)   # Génération de questions
+├── LLMQuestionGenerator            # Générateur utilisant LLM
+├── AnswerGenerator (interface)     # Génération de réponses
+├── LLMAnswerGenerator              # Générateur utilisant LLM
+├── QAPairGenerator                 # Orchestrateur Q/R
+├── DatasetGenerator                # Générateur principal
+└── DatasetGeneratorFactory         # Factory de création
 
-### 1. **Installer les dépendances**
+exporters/
+├── base.py                         # Interface DatasetExporter
+├── messages.py                     # MessagesFormatExporter (JSONL)
+├── question_answer.py              # QuestionAnswerFormatExporter (JSONL)
+├── user_assistant.py               # UserAssistantFormatExporter (JSONL)
+└── mistral_template.py             # MistralChatTemplateExporter (CSV via apply_chat_template)
+```
+
+## 🚀 Utilisation
+
+### Installation
 
 ```bash
-cd local-embedder
+# Dépendances
 pip install -r requirements.txt
+
+# Ollama (pour le LLM local)
+./install_macos.sh  # Sur macOS
+# ou
+./install_ollama.sh  # Sur Linux
 ```
 
-### 2. **Installation d'Ollama et du modèle Mistral**
-
-#### **Sur macOS (recommandé)**
-```bash
-# Installation automatique pour macOS
-./install_macos.sh
-
-# Ou installation manuelle
-# Voir INSTALL_MACOS.md pour le guide détaillé
-```
-
-#### **Sur Linux**
-```bash
-# Installation automatique
-./install_ollama.sh
-
-# Ou installation manuelle
-# 1. Téléchargez Ollama: https://ollama.ai
-# 2. Installez le modèle: ollama pull mistral:7b-instruct
-```
-
-### 3. **Installation GPU (optionnel mais recommandé)**
-
-Pour utiliser le GPU et accélérer les calculs :
+### Utilisation Simple
 
 ```bash
-# Pour CUDA 11.8
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# JSONL (messages)
+python main.py --format messages --output training_data.jsonl
 
-# Pour CUDA 12.1
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# Pour CUDA 13
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130
+# CSV (Mistral chat template)
+python main.py --format mistral_template --output training_data.csv --mistral-model mistralai/Mistral-7B-Instruct-v0.2
 ```
 
-## 🎯 **Utilisation**
-
-### **Test de la configuration**
-
-```bash
-# Test des embeddings
-python test_local.py
-
-# Test de la génération Q/R
-python test_qa_generation.py
-```
-
-### **Exécution du script principal**
-
-```bash
-python main.py
-```
-
-Le script propose un menu interactif avec :
-1. **🔍 Recherche sémantique** : Questions sur le document
-2. **🤖 Génération Q/R** : Création automatique de paires question/réponse
-3. **📊 Statistiques** : Informations sur le dataset
-4. **❌ Quitter**
-
-## 🤖 **Génération de données d'entraînement**
-
-### **Format JSONL généré**
-
-Chaque ligne du fichier `training_data.jsonl` contient une paire question/réponse :
-
-```json
-{"messages": [{"role": "user", "content": "Qu'est-ce que l'administration?"}, {"role": "assistant", "content": "L'administration est l'ensemble des personnes publiques françaises."}]}
-```
-
-### **Processus de génération**
-
-1. **Parsing** : Découpage du document en chunks sémantiques
-2. **Génération de questions** : 2-3 questions par chunk via Mistral 7B
-3. **Génération de réponses** : Réponses basées sur le contenu du chunk
-4. **Formatage** : Conversion au format JSONL standard
-
-### **Exemple d'utilisation**
-
-```bash
-# Générer le dataset complet
-python main.py
-# Choisir l'option 2
-
-# Le fichier sera créé dans: storage/training_data.jsonl
-```
-
-## 🔧 **Configuration**
-
-### **Modèles d'embedding disponibles**
-
-| Modèle | Taille | RAM | Performance | Français |
-|--------|--------|-----|-------------|----------|
-| `all-MiniLM-L6-v2` | 22MB | 1GB | ⭐⭐⭐ | ⭐⭐⭐ |
-| `paraphrase-multilingual` | 118MB | 2GB | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **`distiluse-base-multilingual`** | **471MB** | **4GB** | **⭐⭐⭐⭐⭐** | **⭐⭐⭐⭐⭐** |
-
-### **Configuration personnalisée**
+### Utilisation Avancée
 
 ```python
-processor = MarkdownDocumentProcessorLocal(
-    markdown_file_path="chemin/vers/fichier.md",
-    storage_dir="./storage",
-    embedding_model="sentence-transformers/distiluse-base-multilingual-cased",
-    chunk_size=1024,
-    chunk_overlap=200
+from pathlib import Path
+from dataset_generator import DatasetGeneratorFactory
+
+# Générateur JSONL (messages)
+generator = DatasetGeneratorFactory.create_default_generator(
+    output_format="messages"
+)
+qa_pairs = generator.generate_dataset(
+    markdown_file=Path("sources/droitadminSmall.md"),
+    output_file=Path("training_data.jsonl")
+)
+
+# Générateur CSV (Mistral chat template)
+generator_mistral = DatasetGeneratorFactory.create_default_generator(
+    output_format="mistral_template",
+    mistral_model_name="mistralai/Mistral-7B-Instruct-v0.2"
+)
+qa_pairs = generator_mistral.generate_dataset(
+    markdown_file=Path("sources/droitadminSmall.md"),
+    output_file=Path("training_data.csv")
 )
 ```
 
-## 📊 **Performance**
+## 🧪 Tests
 
-### **Première exécution**
-- **Téléchargement du modèle** : 2-5 minutes
-- **Génération des embeddings** : 1-3 minutes
-- **Total** : 3-8 minutes
+```bash
+# Tests complets
+python test_main.py
 
-### **Exécutions suivantes**
-- **Chargement de l'index** : 5-10 secondes
-- **Recherche** : 0.1-0.5 secondes
+# Tests spécifiques
+python -c "from test_dataset_generator import test_imports; test_imports()"
+```
 
-## 🖥️ **Support GPU**
+## 📊 Format de Sortie
 
-### **Vérification GPU**
+### Formats pris en charge
+
+- Messages (JSONL):
+  ```json
+  {"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
+  ```
+
+- Question/Answer (JSONL):
+  ```json
+  {"question": "...", "answer": "..."}
+  ```
+
+- User/Assistant (JSONL):
+  ```json
+  {"user": "...", "assistant": "..."}
+  ```
+
+- Mistral chat template (CSV):
+  - Fichier `.csv` avec une colonne `formatted_text`
+  - Chaque ligne contient un échange formaté via `tokenizer.apply_chat_template()`:
+    ```
+    <s>[INST] Question [/INST] Réponse</s>
+    ```
+
+### Métadonnées
+
+- **`source_title`** : Titre de la section source
+- **`source_level`** : Niveau hiérarchique (1-6)
+- **`question`** : Question générée
+- **`answer`** : Réponse basée sur le contenu
+
+## 🔧 Configuration
+
+### Variables d'Environnement
+
+```bash
+# .env
+OLLAMA_HOST=http://localhost:11434
+```
+
+### Paramètres LLM
 
 ```python
-import torch
-print(f"GPU disponible: {torch.cuda.is_available()}")
-if torch.cuda.is_available():
-    print(f"Device: {torch.cuda.get_device_name(0)}")
-    print(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+# Personnalisation du modèle
+generator = DatasetGeneratorFactory.create_default_generator("llama2:7b")
 ```
 
-### **Configuration GPU automatique**
+## 📈 Performance
 
-Le script détecte automatiquement la disponibilité du GPU et l'utilise si possible.
+### Optimisations
 
-## 📁 **Structure des fichiers**
+- **Pas d'index vectoriel** : Suppression des fichiers inutiles
+- **Parsing hiérarchique** : Préservation de la structure Markdown
+- **Génération par chunks** : Traitement optimisé des sections
+- **Export direct** : Pas de stockage intermédiaire
 
-```
-local-embedder/
-├── main.py                 # Script principal
-├── test_local.py          # Script de test
-├── requirements.txt       # Dépendances
-├── README.md             # Documentation
-└── storage/              # Index et cache (généré)
-    ├── index/            # Index vectoriel
-    └── embeddings_cache/ # Cache des embeddings
-```
+### Métriques
 
-## 🔍 **Exemples de recherche**
+- **Temps de génération** : ~2-5 minutes pour 13 sections
+- **Taille du dataset** : ~50-100 paires Q/R
+- **Espace disque** : Seulement le fichier JSONL final
 
-Le script inclut des exemples de recherche sémantique :
+## 🎯 Avantages
 
-- "Qu'est-ce que l'administration?"
-- "Définition des personnes publiques"
-- "Différence entre établissement public et collectivité territoriale"
-- "Service public et externalisation"
+### vs Script Original
 
-## ⚡ **Optimisations**
+| Aspect | Script Original | Script Optimisé |
+|--------|----------------|-----------------|
+| **Fichiers générés** | 5+ fichiers | 1 fichier JSONL |
+| **Espace disque** | ~472MB | ~1MB |
+| **Complexité** | Recherche + Q/R | Q/R uniquement |
+| **Performance** | Lente (index) | Rapide (direct) |
+| **Maintenance** | Complexe | Simple |
 
-### **Cache des embeddings**
-Les embeddings sont mis en cache pour éviter les recalculs.
+### Design Patterns
 
-### **Quantification (optionnel)**
+- **Séparation des responsabilités** : Chaque classe a un rôle précis
+- **Extensibilité** : Facile d'ajouter de nouveaux générateurs
+- **Testabilité** : Chaque composant peut être testé indépendamment
+- **Réutilisabilité** : Composants modulaires
+
+## 🔍 Exemples d'Usage
+
+### Génération Simple
+
 ```python
-# Pour réduire l'utilisation mémoire
-model_kwargs={"torch_dtype": "float16"}
-```
+from dataset_generator import DatasetGeneratorFactory
 
-### **Batch processing**
-Le script traite les documents par batch pour optimiser la mémoire.
-
-## 🚨 **Dépannage**
-
-### **Erreur de mémoire**
-- Réduisez `chunk_size` (512 au lieu de 1024)
-- Utilisez un modèle plus petit
-- Fermez d'autres applications
-
-### **Erreur de téléchargement**
-- Vérifiez votre connexion internet
-- Le modèle sera téléchargé automatiquement
-
-### **Performance lente**
-- Installez PyTorch avec support GPU
-- Utilisez un modèle plus petit si nécessaire
-
-## 📈 **Comparaison avec les APIs**
-
-| Solution | Coût | Vitesse | Limites | Privé |
-|----------|------|---------|---------|-------|
-| **Local** | Gratuit | Rapide | Aucune | ✅ |
-| OpenAI | Payant | Rapide | Rate limits | ❌ |
-| Mistral | Payant | Rapide | Rate limits | ❌ |
-
-## 🎯 **Recommandations**
-
-1. **Première utilisation** : Lancez `test_local.py` pour vérifier la configuration
-2. **GPU recommandé** : Pour des performances optimales
-3. **Modèle distiluse** : Meilleur équilibre qualité/performance pour le français
-4. **Cache activé** : Les embeddings sont mis en cache automatiquement
-
-## 🔧 **Personnalisation avancée**
-
-### **Modèle personnalisé**
-```python
-# Utiliser un modèle différent
-processor = MarkdownDocumentProcessorLocal(
-    embedding_model="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+generator = DatasetGeneratorFactory.create_default_generator()
+qa_pairs = generator.generate_dataset(
+    Path("mon_document.md"),
+    Path("mon_dataset.jsonl")
 )
 ```
 
-### **Configuration GPU manuelle**
+### Génération Personnalisée
+
 ```python
-# Forcer l'utilisation du CPU
-Settings.embed_model = HuggingFaceEmbedding(
-    model_name="sentence-transformers/distiluse-base-multilingual-cased",
-    device="cpu"
+from dataset_generator import (
+    HierarchicalMarkdownParser,
+    MarkdownChunkProcessor,
+    LLMQuestionGenerator,
+    LLMAnswerGenerator,
+    QAPairGenerator,
+    JSONLExporter,
+    DatasetGenerator
 )
+
+# Composants personnalisés
+parser = HierarchicalMarkdownParser()
+processor = MarkdownChunkProcessor()
+question_gen = LLMQuestionGenerator("custom-model")
+answer_gen = LLMAnswerGenerator("custom-model")
+qa_gen = QAPairGenerator(question_gen, answer_gen)
+exporter = JSONLExporter()
+
+# Générateur personnalisé
+generator = DatasetGenerator(parser, processor, qa_gen, exporter)
 ```
 
-Cette solution locale vous donne un contrôle total sur vos données et vos coûts !
+## 🚨 Dépannage
+
+### Erreurs Communes
+
+1. **"Ollama not found"**
+   ```bash
+   # Vérifier qu'Ollama est installé et lancé
+   ollama list
+   ```
+
+2. **"Model not found"**
+   ```bash
+   # Installer le modèle
+   ollama pull mistral:7b-instruct
+   ```
+
+3. **"Import errors"**
+   ```bash
+   # Réinstaller les dépendances
+   pip install -r requirements.txt
+   ```
+
+### Logs
+
+```python
+import logging
+logging.basicConfig(level=logging.INFO)
+```
+
+## 📚 Documentation Technique
+
+### Interfaces Principales
+
+#### `MarkdownParser`
+```python
+class MarkdownParser(ABC):
+    @abstractmethod
+    def parse(self, content: str) -> List[Document]:
+        pass
+```
+
+#### `QuestionGenerator`
+```python
+class QuestionGenerator(ABC):
+    @abstractmethod
+    def generate_questions(self, chunk: Document) -> List[str]:
+        pass
+```
+
+#### `AnswerGenerator`
+```python
+class AnswerGenerator(ABC):
+    @abstractmethod
+    def generate_answer(self, question: str, chunk: Document) -> str:
+        pass
+```
+
+### Extensibilité
+
+Pour ajouter de nouveaux types de générateurs :
+
+1. **Implémenter l'interface** correspondante
+2. **Créer une factory** personnalisée
+3. **Tester** avec les tests unitaires
+
+## 🎉 Résultat
+
+Un script optimisé, maintenable et extensible pour la génération de datasets Q/R, sans les complexités inutiles de la recherche sémantique.
