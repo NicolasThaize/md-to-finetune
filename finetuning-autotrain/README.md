@@ -1,10 +1,11 @@
 # AutoTrain (Hugging Face) — Quick Install and Usage
 
-## Installation (pip)
+## Installation
 
 ```bash
 pip install autotrain-advanced
 ```
+Copy `.env.example` file to `.env` and fill variables.
 
 ### Optional (PyTorch with CUDA)
 ```bash
@@ -14,11 +15,8 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
 ## One usage example
 
-Launch the local AutoTrain app:
+Launch autotrain based on config.yaml file:
 
 ```bash
-autotrain app
+autotrain --config ./config.yaml
 ```
-
-Then open the URL shown in the terminal (by default `http://127.0.0.1:7860`) and follow the on-screen steps.
-
