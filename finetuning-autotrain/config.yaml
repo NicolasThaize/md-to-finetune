@@ -1,0 +1,32 @@
+task: llm-sft
+base_model: mistralai/Mistral-7B-v0.1
+project_name: mistral7b-local-ft
+backend: local
+log: tensorboard
+
+data:
+  path: C:\Users\Travail\Documents\huggingface\md-to-finetune\autotrain_test\data
+  train_split: train
+  valid_split: null
+  chat_template: none
+  column_mapping:
+    text_column: text
+
+params:
+  model_max_length: 4096
+  block_size: -1
+  epochs: 1
+  batch_size: 2
+  gradient_accumulation: 8
+  lr: 1e-6
+  peft: true
+  quantization: int4
+  lora_r: 64
+  lora_alpha: 16
+  lora_dropout: 0.05
+  mixed_precision: fp16
+
+hub:
+  push_to_hub: false
+  username: Nthzz
+  token: /
