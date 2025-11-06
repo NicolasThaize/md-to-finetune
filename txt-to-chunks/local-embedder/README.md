@@ -45,7 +45,7 @@ exporters/
 ├── messages.py                     # MessagesFormatExporter (JSONL)
 ├── question_answer.py              # QuestionAnswerFormatExporter (JSONL)
 ├── user_assistant.py               # UserAssistantFormatExporter (JSONL)
-└── mistral_template.py             # MistralChatTemplateExporter (CSV via apply_chat_template)
+└── mistral_template.py             # MistralChatTemplateExporter (JSONL)
 ```
 
 ## 🚀 Utilisation
@@ -68,8 +68,8 @@ pip install -r requirements.txt
 # JSONL (messages)
 python main.py --format messages --input sources/droitadminSmall.md --output training_data.jsonl
 
-# CSV (Mistral chat template)
-python main.py --format mistral_template --input sources/droitadminSmall.md --output training_data.csv --mistral-model mistralai/Mistral-7B-Instruct-v0.2
+# JSONL (Mistral chat template)
+python main.py --format mistral_template --input sources/droitadminSmall.md --output training_data.jsonl --mistral-model mistralai/Mistral-7B-v0.1
 ```
 
 ### Utilisation Avancée
@@ -88,15 +88,15 @@ qa_pairs = generator.generate_dataset(
     output_file=Path("training_data.jsonl")
 )
 
-# Générateur CSV (Mistral chat template)
+# Générateur Mistral chat template
 generator_mistral = DatasetGeneratorFactory.create(
     llm_model="mistral:7b-instruct",
     output_format="mistral_template",
-    mistral_model_name="mistralai/Mistral-7B-Instruct-v0.2",
+    mistral_model_name="mistralai/Mistral-7B-v0.1",
 )
 qa_pairs = generator_mistral.generate_dataset(
     markdown_file=Path("sources/droitadminSmall.md"),
-    output_file=Path("training_data.csv")
+    output_file=Path("training_data.jsonl")
 )
 ```
 
@@ -129,12 +129,10 @@ python -c "from test_dataset_generator import test_imports; test_imports()"
   {"user": "...", "assistant": "..."}
   ```
 
-- Mistral chat template (CSV):
-  - Fichier `.csv` avec une colonne `formatted_text`
-  - Chaque ligne contient un échange formaté via `tokenizer.apply_chat_template()`:
-    ```
-    <s>[INST] Question [/INST] Réponse</s>
-    ```
+- Mistral chat template (JSONL):
+  ```json
+  {"text": "<s>[INST] Ma question [/INST] réponse </s>"}
+  ```
 
 ### Métadonnées
 

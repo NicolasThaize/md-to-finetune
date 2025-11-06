@@ -15,7 +15,7 @@ class DatasetGeneratorFactory:
     def create(
         llm_model: str = "mistral:7b-instruct",
         output_format: str = "messages",
-        mistral_model_name: str = "mistralai/Mistral-7B-Instruct-v0.2",
+        mistral_model_name: str = "mistralai/Mistral-7B-v0.1",
     ) -> DatasetGenerator:
         parser = HierarchicalMarkdownParser()
         chunker = MarkdownChunkProcessor()
@@ -58,7 +58,7 @@ class DatasetGeneratorFactory:
     def create(
         llm_model: str = "mistral:7b-instruct",
         output_format: str = "messages",
-        mistral_model_name: str = "mistralai/Mistral-7B-Instruct-v0.2"
+        mistral_model_name: str = "mistralai/Mistral-7B-v0.1"
     ) -> DatasetGenerator:
         parser = HierarchicalMarkdownParser()
         processor = MarkdownChunkProcessor()

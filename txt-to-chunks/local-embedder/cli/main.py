@@ -15,7 +15,7 @@ def run() -> None:
     )
     parser.add_argument(
         "--mistral-model",
-        default="mistralai/Mistral-7B-Instruct-v0.2",
+        default="mistralai/Mistral-7B-v0.1",
         help="Modèle Mistral pour le tokenizer (si format=mistral_template)",
     )
     parser.add_argument(
@@ -70,7 +70,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--mistral-model",
-        default="mistralai/Mistral-7B-Instruct-v0.2",
+        default="mistralai/Mistral-7B-v0.1",
         help="Modèle Mistral pour le tokenizer (si format=mistral_template)"
     )
     parser.add_argument(
