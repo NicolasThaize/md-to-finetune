@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dataset_generator import QAPair
+    from core.domain import QAPair
 
 
 class DatasetExporter(ABC):

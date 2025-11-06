@@ -3,7 +3,7 @@ from typing import List
 from llama_index.core import Document
 from llama_index.llms.ollama import Ollama
 
-from ..core.qa import QuestionGenerator, AnswerGenerator
+from core.qa import QuestionGenerator, AnswerGenerator
 
 
 class LLMQuestionGenerator(QuestionGenerator):

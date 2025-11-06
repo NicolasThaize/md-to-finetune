@@ -1,11 +1,11 @@
-from ..core.parsing import HierarchicalMarkdownParser
-from ..core.chunking import MarkdownChunkProcessor
-from ..exporters.messages import MessagesFormatExporter
-from ..exporters.question_answer import QuestionAnswerFormatExporter
-from ..exporters.user_assistant import UserAssistantFormatExporter
-from ..exporters.mistral_template import MistralChatTemplateExporter
-from ..llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
-from .generator import DatasetGenerator, QAPairGenerator
+from core.parsing import HierarchicalMarkdownParser
+from core.chunking import MarkdownChunkProcessor
+from exporters.messages import MessagesFormatExporter
+from exporters.question_answer import QuestionAnswerFormatExporter
+from exporters.user_assistant import UserAssistantFormatExporter
+from exporters.mistral_template import MistralChatTemplateExporter
+from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
+from pipeline.generator import DatasetGenerator, QAPairGenerator
 
 
 class DatasetGeneratorFactory:

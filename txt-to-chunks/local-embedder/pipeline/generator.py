@@ -4,11 +4,11 @@ from typing import List
 
 from llama_index.core import Document
 
-from ..core.domain import QAPair
-from ..core.parsing import MarkdownParser
-from ..core.chunking import ChunkProcessor
-from ..core.qa import QuestionGenerator, AnswerGenerator
-from ..exporters.base import DatasetExporter
+from core.domain import QAPair
+from core.parsing import MarkdownParser
+from core.chunking import ChunkProcessor
+from core.qa import QuestionGenerator, AnswerGenerator
+from exporters.base import DatasetExporter
 
 
 logger = logging.getLogger(__name__)

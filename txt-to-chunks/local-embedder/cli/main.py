@@ -2,7 +2,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from ..pipeline.factory import DatasetGeneratorFactory
+from pipeline.factory import DatasetGeneratorFactory
 
 
 def run() -> None:

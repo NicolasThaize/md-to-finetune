@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List
 
 from exporters.base import DatasetExporter
-from dataset_generator import QAPair
+from core.domain import QAPair
 
 logger = logging.getLogger(__name__)
 
