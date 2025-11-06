@@ -299,35 +299,34 @@ def test_mistral_exporter():
         from exporters.mistral_template import MistralChatTemplateExporter
         import tempfile
         
-        with patch('exporters.mistral_template.AutoTokenizer') as mock_tok:
-            # Mock tokenizer behavior
-            mock_instance = Mock()
-            mock_instance.apply_chat_template.return_value = "<s>[INST] Q [/INST] A</s>"
-            mock_tok.from_pretrained.return_value = mock_instance
+       
+        exporter = MistralChatTemplateExporter()
             
-            exporter = MistralChatTemplateExporter(model_name="mock-model")
-            
-            qa_pairs = [
-                QAPair(question="Q1?", answer="A1", source_title="S1", source_level=1),
-                QAPair(question="Q2?", answer="A2", source_title="S2", source_level=2),
-            ]
-            
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv') as f:
-                temp_path = Path(f.name)
-            
-            exporter.export(qa_pairs, temp_path)
-            
-            # Vérifier le contenu CSV
-            import csv
-            with open(temp_path, 'r', encoding='utf-8') as f:
-                reader = list(csv.reader(f))
-            
-            # Header + 2 rows
-            assert len(reader) == 3, f"Attendu 3 lignes (1 header + 2), obtenu {len(reader)}"
-            assert reader[0] == ['formatted_text']
-            assert reader[1][0].startswith('<s>[INST]')
-            
-            temp_path.unlink()
+        qa_pairs = [
+            QAPair(question="Q1?", answer="A1", source_title="S1", source_level=1),
+            QAPair(question="Q2?", answer="A2", source_title="S2", source_level=2),
+        ]
+        
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as f:
+            temp_path = Path(f.name)
+        
+        exporter.export(qa_pairs, temp_path)
+        
+        # Vérifier le contenu
+        with open(temp_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        
+        assert len(lines) == 2, f"Attendu 2 lignes, obtenu {len(lines)}"
+        
+        # Vérifier le format JSON
+        for line in lines:
+            data = json.loads(line.strip())
+            assert 'text' in data
+            assert data['text'].startswith('<s>[INST]')
+            assert data['text'].endswith('</s>')
+    
+        # Nettoyer
+        temp_path.unlink()
         
         print("✅ Exporteur Mistral fonctionne correctement")
         return True
@@ -347,7 +346,7 @@ def test_factory():
             mock_llm = Mock()
             mock_ollama.return_value = mock_llm
             
-            generator = DatasetGeneratorFactory.create_default_generator("test-model")
+            generator = DatasetGeneratorFactory.create("test-model")
             
             # Vérifications
             assert generator is not None
