@@ -1,51 +1,53 @@
 import argparse
+import logging
 from pathlib import Path
 
 from pipeline.factory import DatasetGeneratorFactory
 
 
-def main() -> None:
+def run() -> None:
     parser = argparse.ArgumentParser(description="Générateur de dataset Q/R")
     parser.add_argument(
         "--format",
         choices=["messages", "question_answer", "user_assistant", "mistral_template"],
         default="messages",
-        help="Format de sortie (défaut: messages)"
+        help="Format de sortie (défaut: messages)",
     )
     parser.add_argument(
         "--mistral-model",
         default="mistralai/Mistral-7B-v0.1",
-        help="Modèle Mistral pour le tokenizer (si format=mistral_template)"
+        help="Modèle Mistral pour le tokenizer (si format=mistral_template)",
     )
     parser.add_argument(
         "--input",
         type=Path,
-        required=True,
-        help="Fichier Markdown d'entrée"
+        default=Path("sources/droitadminSmall.md"),
+        help="Fichier Markdown d'entrée",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        required=False,
-        help="Fichier de sortie (extension ajustée automatiquement selon le format)"
+        default=None,
+        help="Fichier de sortie (extension ajustée automatiquement selon le format)",
     )
     parser.add_argument(
         "--llm-model",
         default="mistral:7b-instruct",
-        help="Modèle Ollama pour la génération Q/R"
+        help="Modèle Ollama pour la génération Q/R",
     )
-    args = parser.parse_args()
 
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO)
+    
     output_file = args.output
-    if output_file is None:
+    if not output_file:
         output_file = Path("training_data.csv" if args.format == "mistral_template" else "training_data.jsonl")
 
     generator = DatasetGeneratorFactory.create(
         llm_model=args.llm_model,
         output_format=args.format,
-        mistral_model_name=args.mistral_model
+        mistral_model_name=args.mistral_model,
     )
-
     qa_pairs = generator.generate_dataset(args.input, output_file)
     print(f"\n✅ Dataset généré avec succès!")
     print(f"📊 {len(qa_pairs)} paires Q/R créées")
@@ -54,6 +56,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
-
-
+    run()
