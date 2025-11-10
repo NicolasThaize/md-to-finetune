@@ -5,7 +5,7 @@ from exporters.mistral_template import MistralChatTemplateExporter
 
 from core.parsing import HierarchicalMarkdownParser
 from core.chunking import MarkdownChunkProcessor
-from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
+from llm.ollama_generators import BaseFRQuestionGenerator, BaseFRAnswerGenerator
 
 from .generator import DatasetGenerator, QAPairGenerator
 
@@ -22,8 +22,8 @@ class DatasetGeneratorFactory:
         parser = HierarchicalMarkdownParser()
         processor = MarkdownChunkProcessor()
         qgen = QAPairGenerator(
-            LLMQuestionGenerator(llm_model),
-            LLMAnswerGenerator(llm_model)
+            BaseFRQuestionGenerator(llm_model),
+            BaseFRAnswerGenerator(llm_model)
         )
         if output_format == "messages":
             exporter = MessagesFormatExporter()
