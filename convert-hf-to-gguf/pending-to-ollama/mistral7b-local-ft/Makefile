@@ -1,0 +1,1 @@
+FROM C:\Users\Travail\Documents\huggingface\md-to-finetune\convert-hf-to-gguf\pending-to-ollama\mistral7b-local-ft\mistral7b-local-ft.gguf
