@@ -6,7 +6,7 @@ from llama_index.llms.ollama import Ollama
 from core.qa import QuestionGenerator, AnswerGenerator
 
 
-class LLMQuestionGenerator(QuestionGenerator):
+class BaseFRQuestionGenerator(QuestionGenerator):
     """Générateur de questions utilisant un LLM (Ollama)."""
     
     def __init__(self, llm_model: str = "mistral:7b-instruct", temperature: float = 0.1, request_timeout: float = 60.0):
@@ -34,7 +34,7 @@ Format: Une question par ligne, sans numérotation.
         return questions[:3]
 
 
-class LLMAnswerGenerator(AnswerGenerator):
+class BaseFRAnswerGenerator(AnswerGenerator):
     """Générateur de réponses utilisant un LLM (Ollama)."""
     
     def __init__(self, llm_model: str = "mistral:7b-instruct", temperature: float = 0.1, request_timeout: float = 60.0):

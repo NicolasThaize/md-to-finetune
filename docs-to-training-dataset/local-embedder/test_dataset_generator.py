@@ -33,7 +33,7 @@ def test_imports():
         from core.parsing import MarkdownParser, HierarchicalMarkdownParser
         from core.chunking import ChunkProcessor, MarkdownChunkProcessor
         from core.qa import QuestionGenerator, AnswerGenerator
-        from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
+        from llm.ollama_generators import BaseFRQuestionGenerator, BaseFRAnswerGenerator
         from pipeline.generator import QAPairGenerator, DatasetGenerator
         from pipeline.factory import DatasetGeneratorFactory
         from exporters.base import DatasetExporter
@@ -160,7 +160,7 @@ def test_llm_components():
     print("\n🤖 Test des composants LLM...")
     
     try:
-        from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
+        from llm.ollama_generators import BaseFRQuestionGenerator, BaseFRAnswerGenerator
         from llama_index.core import Document
         
         # Test avec mock pour éviter les appels réels
@@ -172,7 +172,7 @@ def test_llm_components():
             mock_ollama.return_value = mock_llm
             
             # Test du générateur de questions
-            question_gen = LLMQuestionGenerator("test-model")
+            question_gen = BaseFRQuestionGenerator("test-model")
             doc = Document(text="Test content", metadata={'title': 'Test'})
             questions = question_gen.generate_questions(doc)
             
@@ -180,7 +180,7 @@ def test_llm_components():
             
             # Test du générateur de réponses
             mock_llm.complete.return_value.__str__ = Mock(return_value="Réponse test")
-            answer_gen = LLMAnswerGenerator("test-model")
+            answer_gen = BaseFRAnswerGenerator("test-model")
             answer = answer_gen.generate_answer("Question test?", doc)
             
             assert isinstance(answer, str)

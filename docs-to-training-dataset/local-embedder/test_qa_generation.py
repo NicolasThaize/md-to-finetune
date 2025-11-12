@@ -97,7 +97,7 @@ def test_qa_generation():
     try:
         from core.parsing import HierarchicalMarkdownParser
         from core.chunking import MarkdownChunkProcessor
-        from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
+        from llm.ollama_generators import BaseFRQuestionGenerator, BaseFRAnswerGenerator
         from pathlib import Path
         
         md_path = Path("./sources/droitadminSmall.md")
@@ -119,8 +119,8 @@ def test_qa_generation():
             return False
         test_chunk = chunks[0]
         
-        q_gen = LLMQuestionGenerator("mistral:7b-instruct")
-        a_gen = LLMAnswerGenerator("mistral:7b-instruct")
+        q_gen = BaseFRQuestionGenerator("mistral:7b-instruct")
+        a_gen = BaseFRAnswerGenerator("mistral:7b-instruct")
         
         questions = q_gen.generate_questions(test_chunk)
         if not questions:

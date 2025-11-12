@@ -34,7 +34,7 @@ core/
 └── qa.py                           # QuestionGenerator, AnswerGenerator
 
 llm/
-└── ollama_generators.py            # LLMQuestionGenerator, LLMAnswerGenerator
+└── ollama_generators.py            # BaseFRQuestionGenerator, BaseFRAnswerGenerator
 
 pipeline/
 ├── generator.py                    # QAPairGenerator, DatasetGenerator (facade)
@@ -210,15 +210,15 @@ qa_pairs = generator.generate_dataset(
 ```python
 from core.parsing import HierarchicalMarkdownParser
 from core.chunking import MarkdownChunkProcessor
-from llm.ollama_generators import LLMQuestionGenerator, LLMAnswerGenerator
+from llm.ollama_generators import BaseFRQuestionGenerator, BaseFRAnswerGenerator
 from pipeline.generator import QAPairGenerator, DatasetGenerator
 from exporters.messages import MessagesFormatExporter
 
 # Composants personnalisés
 parser = HierarchicalMarkdownParser()
 processor = MarkdownChunkProcessor()
-question_gen = LLMQuestionGenerator("custom-model")
-answer_gen = LLMAnswerGenerator("custom-model")
+question_gen = BaseFRQuestionGenerator("custom-model")
+answer_gen = BaseFRAnswerGenerator("custom-model")
 qa_gen = QAPairGenerator(question_gen, answer_gen)
 exporter = MessagesFormatExporter()
 
